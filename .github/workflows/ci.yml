@@ -41,7 +41,14 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Start stack
-        run: docker compose up -d --build --wait server client
+        # Docker Hub rate-limits anonymous pulls (429) and fails the build; retry before giving up.
+        run: |
+          for attempt in 1 2 3; do
+            docker compose up -d --build --wait server client && exit 0
+            echo "Attempt $attempt failed; retrying in 30s"
+            sleep 30
+          done
+          exit 1
       - name: Bots through the client's nginx proxy (with reconnects)
         run: npm run bots -- --url http://localhost:8081 --bots 4 --duration 6 --drop-every 2
       - name: Naive-mode bots directly against the server
